@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from params import Params
 
 class ResNet(nn.Module):
     '''
@@ -8,6 +9,7 @@ class ResNet(nn.Module):
     '''
     def __init__(self, block: nn.Module, num_blocks: list[int], num_classes: int=1000, is_plain: bool=False):
         super(ResNet, self).__init__()
+        self.is_plain = is_plain
         assert len(num_blocks) == 4, 'num_blocks must be a list of length 4'
         # num of input / output channels
         if block == SimpleBlock:
@@ -27,7 +29,7 @@ class ResNet(nn.Module):
         '''
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=7, stride=2, padding=3)
         self.norm = nn.BatchNorm2d(num_features=64)
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU()
         self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2, padding=1)
         # BLOCKS
         self.conv2_x = self._make_layer(block, num_blocks[0], channels[0][0], channels[0][1])
@@ -41,10 +43,10 @@ class ResNet(nn.Module):
     def _make_layer(self, block, num_blocks, in_channels, out_channels):
         layers = []
         # first layer needs to handle change in # of kernels
-        layers.append(block(in_channels, out_channels))
+        layers.append(block(in_channels, out_channels, is_plain=self.is_plain))
         # subsequent layers
         for _ in range(num_blocks):
-            layers.append(block(out_channels, out_channels))
+            layers.append(block(out_channels, out_channels, is_plain=self.is_plain))
         return nn.Sequential(*layers)
     
     def _forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -93,7 +95,7 @@ class SimpleBlock(nn.Module):
         # layer 1 will spit out `out_channels` so this becomes the input to layer 2
         self.layer2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
         self.bn2 = nn.BatchNorm2d(out_channels)
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU()
         if not self.num_channels_is_same:
             # use a dense layer to project the identity to the output channels
             self.projection = nn.Sequential(
@@ -161,7 +163,7 @@ class BottleneckBlock(nn.Module):
         self.bn2 = nn.BatchNorm2d(downsampled_channels)
         self.conv3 = nn.Conv2d(downsampled_channels, out_channels, kernel_size=1, stride=1, padding=0)
         self.bn3 = nn.BatchNorm2d(out_channels)
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU()
 
     def _forward(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
@@ -176,7 +178,6 @@ class BottleneckBlock(nn.Module):
 
         x = self.conv3(x)
         x = self.bn3(x)
-        x = self.relu(x)
 
         if self.is_plain: return x
 
