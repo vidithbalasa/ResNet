@@ -3,12 +3,17 @@ import torch.nn as nn
 
 class ResNet(nn.Module):
     '''
-    A ResNet model built on Blocks of Convolutional and Residual Layers.
-        It takes in 
+    ResNet class requires a block and an architecture (num_blocks) to create a model.
+        The ResNet class is based on the original ResNet paper.
     '''
-    def __init__(self, block: nn.Module, num_blocks: list[int]):
+    def __init__(self, block: nn.Module, num_blocks: list[int], num_classes: int=1000, is_plain: bool=False):
         super(ResNet, self).__init__()
         assert len(num_blocks) == 4, 'num_blocks must be a list of length 4'
+        # num of input / output channels
+        if block == SimpleBlock:
+            channels = [(64, 64), (64, 128), (128, 256), (256, 512)]
+        elif block == BottleneckBlock:
+            channels = [(64,256), (256, 512), (512, 1024), (1024, 2048)]
         '''
         Follow the ResNet architecture shown on page 4 of the paper.
             - Open with a 7x7 kernel
@@ -20,41 +25,42 @@ class ResNet(nn.Module):
                     - Add a stride of 2 if changing # of kernels
             - End with a 1000 neuron output layer (with a softmax activation)
         '''
-        self.layer1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=7, stride=2, padding=3)
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=7, stride=2, padding=3)
         self.norm = nn.BatchNorm2d(num_features=64)
-        self.activation = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2, padding=1)
         # BLOCKS
-        self.block_layer1 = self._make_layer(block, num_blocks[0], 64, 64)
-        self.block_layer2 = self._make_layer(block, num_blocks[1], 64, 128)
-        self.block_layer3 = self._make_layer(block, num_blocks[2], 128, 256)
-        self.block_layer4 = self._make_layer(block, num_blocks[3], 256, 512)
-        # OUTPUT LAYER (a dense 1000 perceptron layer with a softmax activation)
-        self.output_layer = nn.Linear(in_features=512, out_features=1000)
-        self.softmax = nn.Softmax(dim=1)
+        self.conv2_x = self._make_layer(block, num_blocks[0], channels[0][0], channels[0][1])
+        self.conv3_x = self._make_layer(block, num_blocks[1], channels[1][0], channels[1][1])
+        self.conv4_x = self._make_layer(block, num_blocks[2], channels[2][0], channels[2][1])
+        self.conv5_x = self._make_layer(block, num_blocks[3], channels[3][0], channels[3][1])
+        # OUTPUT
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.output_layer = nn.Linear(in_features=channels[-1][-1], out_features=num_classes)
     
     def _make_layer(self, block, num_blocks, in_channels, out_channels):
         layers = []
         # first layer needs to handle change in # of kernels
         layers.append(block(in_channels, out_channels))
+        # subsequent layers
         for _ in range(num_blocks):
             layers.append(block(out_channels, out_channels))
         return nn.Sequential(*layers)
     
     def _forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.layer1(x)
+        x = self.conv1(x)
         x = self.norm(x)
-        x = self.activation(x)
-
+        x = self.relu(x)
         x = self.maxpool(x)
 
-        x = self.block_layer1(x)
-        x = self.block_layer2(x)
-        x = self.block_layer3(x)
-        x = self.block_layer4(x)
+        x = self.conv2_x(x)
+        x = self.conv3_x(x)
+        x = self.conv4_x(x)
+        x = self.conv5_x(x)
 
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
         x = self.output_layer(x)
-        x = self.softmax(x)
 
         return x
     
@@ -76,36 +82,44 @@ Blocks
         - Stride increases to 2 if # of input channels != # of output channels
 '''
 class SimpleBlock(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int):
+    def __init__(self, in_channels: int, out_channels: int, is_plain: bool=False):
         super(SimpleBlock, self).__init__()
-        # handle case where # of channels changes
-        if in_channels != out_channels:
-            self.layer1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=2, padding=1)
-        else:
-            # create 2 conv layers
-            self.layer1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1)
-        # norm layer
-        self.norm = nn.BatchNorm2d(out_channels)
-        # relu layer (not optimal but same as paper)
-        self.activation = nn.ReLU(inplace=True)
+        self.is_plain = is_plain
+        self.num_channels_is_same = in_channels == out_channels
+        stride = 1 if self.num_channels_is_same else 2
+        ''' Architecture '''
+        self.layer1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1)
+        self.bn1 = nn.BatchNorm2d(out_channels)
         # layer 1 will spit out `out_channels` so this becomes the input to layer 2
         self.layer2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+        if not self.num_channels_is_same:
+            # use a dense layer to project the identity to the output channels
+            self.projection = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=2),
+                nn.BatchNorm2d(out_channels)
+            )
     
     def _forward(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
-        # run the first layer
+        
         x = self.layer1(x)
-        # add batch norm and ReLU
-        x = self.norm(x)
-        x = self.activation(x)
-        # run the second layer
+        x = self.bn1(x)
+        x = self.relu(x)
+        
         x = self.layer2(x)
-        # add batch norm and ReLU
-        x = self.norm(x)
-        x = self.activation(x)
+        x = self.bn2(x)
+        x = self.relu(x)
 
+        if self.is_plain: return x
+
+        ''' Shortcut Connection '''
+        if not self.num_channels_is_same:
+            # project the input to the output channels
+            identity = self.projection(identity)
         x += identity
-        x = self.activation(x)
+        x = self.relu(x)
         
         return x
 
@@ -113,32 +127,58 @@ class SimpleBlock(nn.Module):
         return self._forward(x)
 
 class BottleneckBlock(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int):
+    def __init__(self, in_channels: int, out_channels: int, is_plain: bool=False):
         super(BottleneckBlock, self).__init__()
-        # downsample the input
-        downsampled_channels = in_channels // 4
-        self.layer1 = nn.Conv2d(in_channels, downsampled_channels, kernel_size=1, stride=1, padding=0)
-        self.layer2 = nn.Conv2d(downsampled_channels, downsampled_channels, kernel_size=3, stride=1, padding=1)
-        self.layer3 = nn.Conv2d(downsampled_channels, out_channels, kernel_size=1, stride=1, padding=0)
-        # normalization & activation
-        self.norm1 = nn.BatchNorm2d(downsampled_channels) # for the first 2 layers
-        self.norm2 = nn.BatchNorm2d(out_channels) # last layer
-        self.activation = nn.ReLU(inplace=True)
+        self.is_plain = is_plain
+        # store if the num of channels changes
+        self.num_channels_is_same = in_channels == out_channels
+        if not self.num_channels_is_same:
+            self.projection_layer = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=2, padding=0),
+                nn.BatchNorm2d(out_channels)
+            )
+        # downsample the input by 2 for the first conv layer and 4 for the rest
+        downsampled_channels = in_channels // 4 if self.num_channels_is_same else in_channels // 2
+        '''
+        On page 5 of the paper, conv2_1 is the only block that doesn't downsample the original input.
+        Instead it keeps the channel size at 64 and just upsamples to 256. This is because conv1 down-
+        samples the input to 64 channels, while conv2_x upsamples to 256. The rest of the blocks
+        downsample the first input by half then upsample. So, if the input is 64 then we shouldn't 
+        downsample it.
+        '''
+        if in_channels != out_channels and in_channels == 64:
+            downsampled_channels = in_channels
+        # increase stride if num input channels != num output channels
+        stride = 1 if in_channels == out_channels else 2
+        '''
+        1x1 conv - downsample input
+        3x3 conv - learn features
+        1x1 conv - upsample output
+        '''
+        self.conv1 = nn.Conv2d(in_channels, downsampled_channels, kernel_size=1, stride=stride, padding=0)
+        self.bn1 = nn.BatchNorm2d(downsampled_channels)
+        self.conv2 = nn.Conv2d(downsampled_channels, downsampled_channels, kernel_size=3, stride=1, padding=1)
+        self.bn2 = nn.BatchNorm2d(downsampled_channels)
+        self.conv3 = nn.Conv2d(downsampled_channels, out_channels, kernel_size=1, stride=1, padding=0)
+        self.bn3 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
 
     def _forward(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
 
-        x = self.layer1(x)
-        x = self.norm1(x)
-        x = self.activation(x)
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
 
-        x = self.layer2(x)
-        x = self.norm1(x)
-        x = self.activation(x)
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = self.relu(x)
 
-        x = self.layer3(x)
-        x = self.norm2(x)
-        x = self.activation(x)
+        x = self.conv3(x)
+        x = self.bn3(x)
+        x = self.relu(x)
+
+        if self.is_plain: return x
 
         '''
         Residual Conection
@@ -146,8 +186,10 @@ class BottleneckBlock(nn.Module):
         to the current output. This allows the model to change the identity instead
         of changing a 0-biased function.
         '''
+        if not self.num_channels_is_same:
+            identity = self.projection_layer(identity)
         x += identity
-        x = self.activation(x)
+        x = self.relu(x)
 
         return x
 
