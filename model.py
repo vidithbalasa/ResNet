@@ -7,7 +7,7 @@ class ResNet(nn.Module):
     ResNet class requires a block and an architecture (num_blocks) to create a model.
         The ResNet class is based on the original ResNet paper.
     '''
-    def __init__(self, block: nn.Module, num_blocks: list[int], num_classes: int=1000, is_plain: bool=False):
+    def __init__(self, block: nn.Module, num_blocks: list[int], num_classes: int=Params.NUM_CLASSES, is_plain: bool=False):
         super(ResNet, self).__init__()
         self.is_plain = is_plain
         assert len(num_blocks) == 4, 'num_blocks must be a list of length 4'

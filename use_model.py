@@ -2,7 +2,8 @@
 Create ResNet models
 '''
 from model import SimpleBlock, BottleneckBlock, ResNet
-from image_process import prepare_image_pred
+from PIL import Image
+from torchvision import transforms
 
 resnet_models = {
     # Simple Models
@@ -35,8 +36,25 @@ def create_resnet(name: str, num_classes: int = 10, is_plain: bool = False) -> R
     model_config = resnet_models[name]
     return ResNet(model_config['block'], model_config['num_blocks'], num_classes=num_classes, is_plain=is_plain)
 
-def get_test_image(file: str = 'ILSVRC2012_val_00000907.JPEG'):
+def prepare_image(img_file: str) -> Image:
+    """
+    Prepare image for prediction
+    """
+    img = Image.open(img_file)
     '''
-    Loads a test image from the ILSVRC2012 dataset.
+    PreProcess Image
+    Based on section 3.4 on page 4 of the paper
+        - Resize to 256x256
+        - Center crop to 224x224
+        - Normalize
     '''
-    return prepare_image_pred(file)
+    preprocess = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+    input = preprocess(img)
+    # add batch dimension
+    input = input.unsqueeze(0)
+    return input

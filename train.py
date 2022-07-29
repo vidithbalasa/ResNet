@@ -1,18 +1,32 @@
 import torch
 import torch.nn as nn
 from torchvision import transforms
-from main import create_resnet
+from use_model import create_resnet
 from params import Params
 import fastai.vision.all as fastai
 import os
 
+def get_data(path: str) -> fastai.DataLoader:
+    '''
+    Get the data.
+    '''
+    dblock = fastai.DataBlock(
+        blocks=(fastai.ImageBlock, fastai.CategoryBlock),
+        get_items=fastai.get_image_files,
+        splitter=fastai.RandomSplitter(),
+        get_y=fastai.parent_label,
+        item_tfms=fastai.Resize(460),
+        batch_tfms=fastai.RandomRotate(degrees=15)
+    )
+    dls = dblock.dataloaders(path)
 
-def train(epochs: int):
+
+def train(epochs: int, architecture: str = 'resnet50'):
     '''
     Train the model.
     '''
-    model = create_resnet('resnet50', num_classes=10)
-    device = torch.device('mps')
+    model = create_resnet(architecture, num_classes=Params.NUM_CLASSES)
+    device = torch.device(Params.DEVICE)
     model.to(device)
 
     # Load the data
