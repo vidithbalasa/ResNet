@@ -31,8 +31,9 @@ def train(model: nn.Module, epochs: int, save_name: str) -> None:
                 f.write(f'{epoch_idx},{train_loss:.2f},{train_accuracy:.2f}%,{test_loss:.2f},{test_accuracy*100:.2f}%\n')
         # save 
         if train_loss < last_loss:
-            torch.save(model.state_dict(), f'{save_name}_epoch-{epoch_idx}.pt')
+            torch.save(model.state_dict(), f'{save_name}.pt')
             last_loss = train_loss
+            print(f'Saved model from epoch {epoch_idx}')
 
     # save model
     torch.save(model.state_dict(), f'{save_name}_final.pt')
