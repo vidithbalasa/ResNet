@@ -4,28 +4,28 @@ from params import Params
 from typing import List
 
 class ResNet(nn.Module):
-    '''
-    ResNet class requires a block and an architecture (num_blocks) to create a model.
-        The ResNet class is based on the original ResNet paper.
-    '''
     def __init__(self, block: nn.Module, num_blocks: List[int], num_classes: int=Params.NUM_CLASSES, is_plain: bool=False):
+        '''
+        @param block: the block to use in the ResNet
+        @param num_blocks: a list of the number of blocks in each layer
+        @param num_classes: the number of classes in the dataset
+        @param is_plain: doesn't use residual connections if True
+        '''
         super(ResNet, self).__init__()
         self.is_plain = is_plain
         assert len(num_blocks) == 4, 'num_blocks must be a list of length 4'
-        # num of input / output channels
+        # num of input / output channels based on block type
         if block == SimpleBlock:
             channels = [(64, 64), (64, 128), (128, 256), (256, 512)]
         elif block == BottleneckBlock:
             channels = [(64,256), (256, 512), (512, 1024), (1024, 2048)]
         '''
-        Follow the ResNet architecture shown on page 4 of the paper.
-            - Open with a 7x7 kernel
+        Follows the ResNet architecture shown on page 4 of the paper.
+            - Open with a 7x7 kernel conv layer
             - Add a max pooling layer with a 2x2 kernel and stride of 2
             BLOCKS (SimpleBlock or BottleneckBlock)
                 - Add blocks increasing in number of kernels from 64 to 512
-                - Add a residual connection between each block
-                    - Add a projection shortcut if the number of kernels is different between the two blocks
-                    - Add a stride of 2 if changing # of kernels
+                - input and output channels are based on block type (see `channels` above)
             - End with a 1000 neuron output layer (with a softmax activation)
         '''
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=7, stride=2, padding=3)
@@ -41,7 +41,7 @@ class ResNet(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.output_layer = nn.Linear(in_features=channels[-1][-1], out_features=num_classes)
     
-    def _make_layer(self, block, num_blocks, in_channels, out_channels):
+    def _make_layer(self, block, num_blocks, in_channels, out_channels) -> nn.Sequential:
         layers = []
         # first layer needs to handle change in # of kernels
         layers.append(block(in_channels, out_channels, is_plain=self.is_plain))

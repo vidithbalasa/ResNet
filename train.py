@@ -13,7 +13,6 @@ def train(model: nn.Module, epochs: int=1) -> None:
     trainloader, validloader, testloader, classes = get_CIFAR_data()
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=Params.LEARNING_RATE)
-    running_loss = 0
     
     for idx, epoch in enumerate(range(epochs)):
         model.train(True)
@@ -32,6 +31,8 @@ def train(model: nn.Module, epochs: int=1) -> None:
 
 
 def train_one_epoch(trainloader: DataLoader, model: nn.Module, optimizer: torch.optim, loss_fn: nn.modules.loss) -> float:
+        running_loss = 0
+
         for batch_idx, (images, labels) in enumerate(trainloader):
             images, labels = images.to(Params.DEVICE), labels.to(Params.DEVICE)
             # zero gradients for each batch
