@@ -13,12 +13,11 @@ class ResNet(nn.Module):
         '''
         super(ResNet, self).__init__()
         self.is_plain = is_plain
-        self.num_blocks = num_blocks
         assert len(num_blocks) == 4, 'num_blocks must be a list of length 4, pad ending with 0 to use less layers'
         # num of input / output channels based on block type
         if block == SimpleBlock:
             # only using simple block for CIFAR data (3 layers instead of 4)
-            channels = [(16, 16), (16, 32), (32, 64), ('N/A', 'N/A')]
+            channels = [(16, 16), (16, 32), (32, 64)]
             kernel, stride, pad = 3, 1, 1
             out_channels = 16
         elif block == BottleneckBlock:
@@ -42,7 +41,7 @@ class ResNet(nn.Module):
         self.conv2_x = self._make_layer(block, num_blocks[0], channels[0][0], channels[0][1])
         self.conv3_x = self._make_layer(block, num_blocks[1], channels[1][0], channels[1][1])
         self.conv4_x = self._make_layer(block, num_blocks[2], channels[2][0], channels[2][1])
-        self.conv5_x = self._make_layer(block, num_blocks[3], channels[3][0], channels[3][1])
+        self.conv5_x = self._make_layer(block, num_blocks[3], channels[3][0], channels[3][1]) if num_blocks[3] else None
         # OUTPUT
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.output_layer = nn.Linear(in_features=channels[-1][-1], out_features=num_classes)
