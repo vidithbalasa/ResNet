@@ -62,7 +62,6 @@ def train_one_epoch(
             loss.backward()
             # backpropagate
             optimizer.step()
-            break
 
             running_loss += loss.item()
         return running_loss / len(trainloader), correct / len(trainloader)
