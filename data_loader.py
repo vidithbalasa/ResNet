@@ -4,7 +4,7 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from params import Params
 
-def get_CIFAR_data() -> DataLoader and DataLoader and DataLoader and tuple:
+def get_CIFAR_data() -> DataLoader and DataLoader and tuple:
     '''
     Get the data. 
     Dataset: CIFAR10
@@ -19,16 +19,8 @@ def get_CIFAR_data() -> DataLoader and DataLoader and DataLoader and tuple:
         download=True, transform=transformation
     )
 
-    # create validation set
-    trainset, validset = torch.utils.data.random_split(trainset, [45000, 5000])
-
     trainloader = DataLoader(
         trainset, batch_size=Params.BATCH_SIZE,
-        shuffle=True, num_workers=2
-    )
-
-    validloader = DataLoader(
-        validset, batch_size=Params.BATCH_SIZE,
         shuffle=True, num_workers=2
     )
 
@@ -44,4 +36,4 @@ def get_CIFAR_data() -> DataLoader and DataLoader and DataLoader and tuple:
     classes = ('plane', 'car', 'bird', 'cat',
            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-    return trainloader, validloader, testloader, classes
+    return trainloader, testloader, classes
