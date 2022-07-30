@@ -18,20 +18,25 @@ def train(model: nn.Module, epochs: int, save_name: str) -> None:
         with open(f'{save_name}.csv', 'w') as f:
             f.write(f'epoch,train_loss,train_accuracy,test_loss,test_accuracy\n')
     
+    last_loss = float('inf')
     for epoch_idx in range(epochs):
         model.train(True)
         train_loss, train_accuracy = train_one_epoch(model, trainloader, optimizer, loss_fn, epoch_idx)
         model.eval()
         test_loss, test_accuracy = evaluate_model(model, testloader, loss_fn)
-        print(f'\tTrain Loss: {train_loss:.2f} - Train Accuracy: {train_accuracy:.2f}, \
+        print(f'\tTrain Loss: {train_loss:.2f} - Train Accuracy: {train_accuracy:.2f}%, \
             Test Loss: {test_loss:.2f} - Test Accuracy: {test_accuracy*100:.2f}%')
         if save_name:
             with open(f'{save_name}.csv', 'a') as f:
                 f.write(f'{epoch_idx},{train_loss:.2f},{train_accuracy:.2f}%,{test_loss:.2f},{test_accuracy*100:.2f}%\n')
+        # save 
+        if train_loss < last_loss:
+            torch.save(model.state_dict(), f'{save_name}_epoch-{epoch_idx}.pt')
+            last_loss = train_loss
 
     # save model
-    torch.save(model.state_dict(), f'{save_name}.pt')
-    print(f'Model saved to {save_name}.pt')
+    torch.save(model.state_dict(), f'{save_name}_final.pt')
+    print(f'Model saved to {save_name}_final.pt')
 
 
 def train_one_epoch(
