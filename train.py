@@ -6,6 +6,7 @@ import torchvision.transforms as transforms
 from params import Params
 from typing import List, Any
 from tqdm import tqdm
+from datetime import datetime
 
 def train(model: nn.Module, epochs: int=1) -> None:
     '''
@@ -20,10 +21,10 @@ def train(model: nn.Module, epochs: int=1) -> None:
         avg_loss = train_one_epoch(trainloader, model, optimizer, loss_fn, epoch+1)
         model.eval()
         accuracy = model_accuracy(model, validloader)
-        print(f'Epoch {epoch+1}/{epochs} - Loss: {avg_loss} - Accuracy: {accuracy}')
+        print(f'Epoch {epoch+1}/{epochs} - Loss: {avg_loss:.2f} - Accuracy: {accuracy*100:.2f}%')
 
     # save model
-    torch.save(model.state_dict(), 'model.pt')
+    torch.save(model.state_dict(), f'model-{datetime.now().strftime("%Y%m%d-%H%M")}.pt')
     
     # get test accuracy
     model.eval()
