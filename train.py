@@ -14,8 +14,8 @@ def train(model: nn.Module, epochs: int=1, save_results: bool=False) -> None:
     trainloader, validloader, testloader, classes = get_CIFAR_data()
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=Params.LEARNING_RATE)
-    curr_time = datetime.now().strftime("%m/%d/%Y-%H:%M")
-    res_file = f'results-{curr_time}.csv' if save_results else None
+    curr_time = datetime.now().strftime("%m-%d-%Y-%H:%M")
+    res_file = f'results_{curr_time}.csv' if save_results else None
     if save_results:
         with open(res_file, 'w') as f:
             f.write(f'epoch,train_loss,valid_loss,valid_accuracy\n')
@@ -31,7 +31,7 @@ def train(model: nn.Module, epochs: int=1, save_results: bool=False) -> None:
                 f.write(f'{epoch_idx},{train_loss:.2f},{val_loss:.2f},{val_accuracy*100:.2f}%\n')
 
     # save model
-    torch.save(model.state_dict(), f'model-{curr_time}.pt')
+    torch.save(model.state_dict(), f'model_{curr_time}.pt')
     
     # get test accuracy
     model.eval()
