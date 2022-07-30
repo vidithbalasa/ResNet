@@ -19,7 +19,7 @@ def train(model: nn.Module, epochs: int=1) -> None:
         model.train(True)
         avg_loss = train_one_epoch(trainloader, model, optimizer, loss_fn, epoch+1)
         model.eval()
-        accuracy = accuracy(model, validloader)
+        accuracy = model_accuracy(model, validloader)
         print(f'Epoch {epoch+1}/{epochs} - Loss: {avg_loss} - Accuracy: {accuracy}')
 
     # save model
