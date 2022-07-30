@@ -59,6 +59,7 @@ def model_accuracy(model: nn.Module, validloader: DataLoader) -> float:
     with torch.no_grad():
         for data in validloader:
             images, labels = data
+            images, labels = images.to(Params.DEVICE), labels.to(Params.DEVICE)
             outputs = model(images)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
