@@ -4,27 +4,32 @@ from torch.utils.data import DataLoader
 import torchvision
 import torchvision.transforms as transforms
 from params import Params
-from typing import List, Any
+from typing import Optional
 from tqdm import tqdm
 from datetime import datetime
 
-def train(model: nn.Module, epochs: int=1) -> None:
+def train(model: nn.Module, epochs: int=1, save_results: bool=False) -> None:
     '''
     Train the model.
     '''
     trainloader, validloader, testloader, classes = get_CIFAR_data()
     loss_fn = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=Params.LEARNING_RATE)
+    optimizer = torch.optim.Adam(model.parameters(), lr=Params.LEARNING_RATE, momentum=Params.MOMENTUM)
+    curr_time = datetime.now().strftime("%Y%M%D-%H%M")
+    res_file = f'./results-{curr_time}.csv' if save_results else None
+    if save_results:
+        with open(res_file, 'w') as f:
+            f.write('Epoch,Batch,Avg Loss\n')
     
     for epoch in range(epochs):
         model.train(True)
-        avg_loss = train_one_epoch(trainloader, model, optimizer, loss_fn, epoch+1)
+        avg_loss = train_one_epoch(trainloader, model, optimizer, loss_fn, epoch+1, res_file)
         model.eval()
         accuracy = model_accuracy(model, validloader)
-        print(f'Epoch {epoch+1}/{epochs} - Loss: {avg_loss:.2f} - Accuracy: {accuracy*100:.2f}%')
+        print(f'\tLoss: {avg_loss:.2f} - Accuracy: {accuracy*100:.2f}%')
 
     # save model
-    torch.save(model.state_dict(), f'model-{datetime.now().strftime("%Y%m%d-%H%M")}.pt')
+    torch.save(model.state_dict(), f'model-{curr_time}.pt')
     
     # get test accuracy
     model.eval()
@@ -32,7 +37,17 @@ def train(model: nn.Module, epochs: int=1) -> None:
     print(f'Test accuracy: {accuracy}')
 
 
-def train_one_epoch(trainloader: DataLoader, model: nn.Module, optimizer: torch.optim, loss_fn: nn.modules.loss, epoch_idx: int) -> float:
+def train_one_epoch(
+    trainloader: DataLoader, 
+    model: nn.Module, 
+    optimizer: torch.optim, 
+    loss_fn: nn.modules.loss, 
+    epoch_idx: int,
+    save_file: Optional[str]=None
+) -> float:
+        '''
+        Train a single epoch.
+        '''
         running_loss = 0
 
         # tqdm loader with title 'epoch {epoch_idx}'
@@ -49,6 +64,9 @@ def train_one_epoch(trainloader: DataLoader, model: nn.Module, optimizer: torch.
             optimizer.step()
 
             running_loss += loss.item()
+            if save_file and batch_idx % 10 == 9:
+                with open(save_file, 'a') as f:
+                    f.write(f'{epoch_idx},{batch_idx},{running_loss/10:.2f}\n')
         return running_loss / len(trainloader)
 
 def model_accuracy(model: nn.Module, validloader: DataLoader) -> float:

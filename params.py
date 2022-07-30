@@ -6,4 +6,5 @@ class Params:
     BASE_WIDTH = 64
     NUM_CLASSES = 10
     DEVICE = 'cuda'
-    LEARNING_RATE = 0.001
+    LEARNING_RATE = 0.1
+    MOMENTUM = 0.9
