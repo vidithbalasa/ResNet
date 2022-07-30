@@ -18,7 +18,7 @@ class ResNet(nn.Module):
         # num of input / output channels based on block type
         if block == SimpleBlock:
             # only using simple block for CIFAR data (3 layers instead of 4)
-            channels = [(16, 16), (16, 32), (32, 64)]
+            channels = [(16, 16), (16, 32), (32, 64), ('N/A', 'N/A')]
             kernel, stride, pad = 3, 1, 1
             out_channels = 16
         elif block == BottleneckBlock:
