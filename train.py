@@ -7,7 +7,7 @@ from tqdm import tqdm
 from datetime import datetime
 from data_loader import get_CIFAR_data
 
-def train(model: nn.Module, epochs: int=1, save_name: str='') -> None:
+def train(model: nn.Module, epochs: int, save_name: str) -> None:
     '''
     Train the model.
     '''
@@ -23,7 +23,8 @@ def train(model: nn.Module, epochs: int=1, save_name: str='') -> None:
         train_loss, train_accuracy = train_one_epoch(model, trainloader, optimizer, loss_fn, epoch_idx)
         model.eval()
         test_loss, test_accuracy = evaluate_model(model, testloader, loss_fn)
-        print(f'\tTrain Loss: {train_loss:.2f} - Test Loss: {test_loss:.2f} - Test Accuracy: {test_accuracy*100:.2f}%')
+        print(f'\tTrain Loss: {train_loss:.2f} - Train Accuracy: {train_accuracy:.2f}, \
+            Test Loss: {test_loss:.2f} - Test Accuracy: {test_accuracy*100:.2f}%')
         if save_name:
             with open(f'{save_name}.csv', 'a') as f:
                 f.write(f'{epoch_idx},{train_loss:.2f},{train_accuracy:.2f}%,{test_loss:.2f},{test_accuracy*100:.2f}%\n')
@@ -61,6 +62,7 @@ def train_one_epoch(
             loss.backward()
             # backpropagate
             optimizer.step()
+            break
 
             running_loss += loss.item()
         return running_loss / len(trainloader), correct / len(trainloader)
