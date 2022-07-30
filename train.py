@@ -5,6 +5,7 @@ import torchvision
 import torchvision.transforms as transforms
 from params import Params
 from typing import List, Any
+from tqdm import tqdm
 
 def train(model: nn.Module, epochs: int=1) -> None:
     '''
@@ -14,26 +15,27 @@ def train(model: nn.Module, epochs: int=1) -> None:
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=Params.LEARNING_RATE)
     
-    for idx, epoch in enumerate(range(epochs)):
+    for epoch in range(epochs):
         model.train(True)
-        avg_loss = train_one_epoch(trainloader, model, optimizer, loss_fn)
+        avg_loss = train_one_epoch(trainloader, model, optimizer, loss_fn, epoch+1)
         model.eval()
         accuracy = accuracy(model, validloader)
-        print(f'Epoch {idx+1}/{epochs} - Loss: {avg_loss} - Accuracy: {accuracy}')
+        print(f'Epoch {epoch+1}/{epochs} - Loss: {avg_loss} - Accuracy: {accuracy}')
 
     # save model
     torch.save(model.state_dict(), 'model.pt')
     
     # get test accuracy
     model.eval()
-    accuracy = accuracy(model, testloader)
+    accuracy = model_accuracy(model, testloader)
     print(f'Test accuracy: {accuracy}')
 
 
-def train_one_epoch(trainloader: DataLoader, model: nn.Module, optimizer: torch.optim, loss_fn: nn.modules.loss) -> float:
+def train_one_epoch(trainloader: DataLoader, model: nn.Module, optimizer: torch.optim, loss_fn: nn.modules.loss, epoch_idx: int) -> float:
         running_loss = 0
 
-        for batch_idx, (images, labels) in enumerate(trainloader):
+        # tqdm loader with title 'epoch {epoch_idx}'
+        for batch_idx, (images, labels) in tqdm(enumerate(trainloader), desc=f'Epoch {epoch_idx}'):
             images, labels = images.to(Params.DEVICE), labels.to(Params.DEVICE)
             # zero gradients for each batch
             optimizer.zero_grad()
@@ -48,7 +50,7 @@ def train_one_epoch(trainloader: DataLoader, model: nn.Module, optimizer: torch.
             running_loss += loss.item()
         return running_loss / len(trainloader)
 
-def accuracy(model: nn.Module, validloader: DataLoader) -> float:
+def model_accuracy(model: nn.Module, validloader: DataLoader) -> float:
     '''
     Compute the accuracy of the model on the validation set.
     '''

@@ -4,6 +4,7 @@ Create ResNet models
 from model import SimpleBlock, BottleneckBlock, ResNet
 from PIL import Image
 from torchvision import transforms
+from params import Params
 
 resnet_models = {
     # Simple Models
@@ -30,7 +31,7 @@ resnet_models = {
     }
 }
 
-def create_resnet(name: str, num_classes: int = 10, is_plain: bool = False) -> ResNet:
+def create_resnet(name: str, num_classes: int = Params.NUM_CLASSES, is_plain: bool = False) -> ResNet:
     if name not in resnet_models:
         raise ValueError(f'ERROR || {name} is not a valid ResNet model, please choose from: {list(resnet_models.keys())}')
     model_config = resnet_models[name]
