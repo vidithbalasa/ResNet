@@ -65,7 +65,6 @@ def train_one_epoch(
             optimizer.step()
 
             running_loss += loss.item()
-            break
         return running_loss / len(trainloader)
 
 def evaluate_model(model: nn.Module, validloader: DataLoader, loss_fn: nn.modules.loss) -> float:
