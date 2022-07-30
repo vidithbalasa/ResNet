@@ -1,12 +1,11 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-import torchvision
-import torchvision.transforms as transforms
 from params import Params
 from typing import Optional
 from tqdm import tqdm
 from datetime import datetime
+from data_loader import get_CIFAR_data
 
 def train(model: nn.Module, epochs: int=1, save_results: bool=False) -> None:
     '''
@@ -19,22 +18,25 @@ def train(model: nn.Module, epochs: int=1, save_results: bool=False) -> None:
     res_file = f'./results-{curr_time}.csv' if save_results else None
     if save_results:
         with open(res_file, 'w') as f:
-            f.write('Epoch,Batch,Avg Loss\n')
+            f.write(f'epoch,train_loss,valid_loss,valid_accuracy\n')
     
-    for epoch in range(epochs):
+    for epoch_idx in range(1, epochs+1):
         model.train(True)
-        avg_loss = train_one_epoch(trainloader, model, optimizer, loss_fn, epoch+1, res_file)
+        train_loss = train_one_epoch(trainloader, model, optimizer, loss_fn, epoch_idx)
         model.eval()
-        accuracy = model_accuracy(model, validloader)
-        print(f'\tLoss: {avg_loss:.2f} - Accuracy: {accuracy*100:.2f}%')
+        val_accuracy, val_loss = evaluate_model(model, validloader, loss_fn)
+        print(f'\tTrain Loss: {train_loss:.2f} - Valid Loss: {val_loss:.2f} - Valid Accuracy: {val_accuracy*100:.2f}%')
+        if save_results:
+            with open(res_file, 'a') as f:
+                f.write(f'{epoch_idx},{train_loss:.2f},{val_loss:.2f},{val_accuracy*100:.2f}%\n')
 
     # save model
     torch.save(model.state_dict(), f'model-{curr_time}.pt')
     
     # get test accuracy
     model.eval()
-    accuracy = model_accuracy(model, testloader)
-    print(f'Test accuracy: {accuracy}')
+    test_accuracy, test_loss = evaluate_model(model, testloader, loss_fn)
+    print(f'Test accuracy: {test_accuracy} - Test loss: {test_loss}')
 
 
 def train_one_epoch(
@@ -43,7 +45,6 @@ def train_one_epoch(
     optimizer: torch.optim, 
     loss_fn: nn.modules.loss, 
     epoch_idx: int,
-    save_file: Optional[str]=None
 ) -> float:
         '''
         Train a single epoch.
@@ -64,14 +65,11 @@ def train_one_epoch(
             optimizer.step()
 
             running_loss += loss.item()
-            if save_file and batch_idx % 10 == 9:
-                with open(save_file, 'a') as f:
-                    f.write(f'{epoch_idx},{batch_idx},{running_loss/10:.2f}\n')
         return running_loss / len(trainloader)
 
-def model_accuracy(model: nn.Module, validloader: DataLoader) -> float:
+def evaluate_model(model: nn.Module, validloader: DataLoader, loss_fn: nn.modules.loss) -> float:
     '''
-    Compute the accuracy of the model on the validation set.
+    Compute the accuracy and loss of the model on the validation set.
     '''
     correct = 0
     total = 0
@@ -80,49 +78,10 @@ def model_accuracy(model: nn.Module, validloader: DataLoader) -> float:
             images, labels = data
             images, labels = images.to(Params.DEVICE), labels.to(Params.DEVICE)
             outputs = model(images)
+
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
-    return correct / total
 
-def get_CIFAR_data() -> DataLoader and DataLoader and DataLoader and tuple:
-    '''
-    Get the data. 
-    Dataset: CIFAR10
-    '''
-    transformation = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
-
-    trainset = torchvision.datasets.CIFAR10(
-        root='./data', train=True, 
-        download=True, transform=transformation
-    )
-
-    # create validation set
-    trainset, validset = torch.utils.data.random_split(trainset, [45000, 5000])
-
-    trainloader = DataLoader(
-        trainset, batch_size=Params.BATCH_SIZE,
-        shuffle=True, num_workers=2
-    )
-
-    validloader = DataLoader(
-        validset, batch_size=Params.BATCH_SIZE,
-        shuffle=True, num_workers=2
-    )
-
-    testset = torchvision.datasets.CIFAR10(
-        root='./data', train=False,
-        download=True, transform=transformation
-    )
-    testloader = DataLoader(
-        testset, batch_size=Params.BATCH_SIZE,
-        shuffle=False, num_workers=2
-    )
-
-    classes = ('plane', 'car', 'bird', 'cat',
-           'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
-
-    return trainloader, validloader, testloader, classes
+            loss = loss_fn(outputs, labels)
+    return correct / total, loss
