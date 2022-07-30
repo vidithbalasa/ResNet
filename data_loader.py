@@ -1,6 +1,8 @@
+import torch
 import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
+from params import Params
 
 def get_CIFAR_data() -> DataLoader and DataLoader and DataLoader and tuple:
     '''

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from params import Params
-from typing import List
+from typing import List, Optional
 
 class ResNet(nn.Module):
     def __init__(self, block: nn.Module, num_blocks: List[int], num_classes: int=Params.NUM_CLASSES, is_plain: bool=False):
@@ -13,12 +13,18 @@ class ResNet(nn.Module):
         '''
         super(ResNet, self).__init__()
         self.is_plain = is_plain
-        assert len(num_blocks) == 4, 'num_blocks must be a list of length 4'
+        self.num_blocks = num_blocks
+        assert len(num_blocks) == 4, 'num_blocks must be a list of length 4, pad ending with 0 to use less layers'
         # num of input / output channels based on block type
         if block == SimpleBlock:
-            channels = [(64, 64), (64, 128), (128, 256), (256, 512)]
+            # only using simple block for CIFAR data (3 layers instead of 4)
+            channels = [(16, 16), (16, 32), (32, 64)]
+            kernel, stride, pad = 3, 1, 1
+            out_channels = 16
         elif block == BottleneckBlock:
             channels = [(64,256), (256, 512), (512, 1024), (1024, 2048)]
+            kernel, stride, pad = 7, 2, 3
+            out_channels = 64
         '''
         Follows the ResNet architecture shown on page 4 of the paper.
             - Open with a 7x7 kernel conv layer
@@ -28,8 +34,8 @@ class ResNet(nn.Module):
                 - input and output channels are based on block type (see `channels` above)
             - End with a 1000 neuron output layer (with a softmax activation)
         '''
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=7, stride=2, padding=3)
-        self.norm = nn.BatchNorm2d(num_features=64)
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=out_channels, kernel_size=kernel, stride=stride, padding=pad)
+        self.norm = nn.BatchNorm2d(num_features=out_channels)
         self.relu = nn.ReLU()
         self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2, padding=1)
         # BLOCKS
@@ -41,7 +47,9 @@ class ResNet(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.output_layer = nn.Linear(in_features=channels[-1][-1], out_features=num_classes)
     
-    def _make_layer(self, block, num_blocks, in_channels, out_channels) -> nn.Sequential:
+    def _make_layer(self, block, num_blocks, in_channels, out_channels) -> Optional[nn.Sequential]:
+        if num_blocks == 0: 
+            return
         layers = []
         # first layer needs to handle change in # of kernels
         layers.append(block(in_channels, out_channels, is_plain=self.is_plain))
@@ -50,7 +58,7 @@ class ResNet(nn.Module):
             layers.append(block(out_channels, out_channels, is_plain=self.is_plain))
         return nn.Sequential(*layers)
     
-    def _forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.conv1(x)
         x = self.norm(x)
         x = self.relu(x)
@@ -59,16 +67,14 @@ class ResNet(nn.Module):
         x = self.conv2_x(x)
         x = self.conv3_x(x)
         x = self.conv4_x(x)
-        x = self.conv5_x(x)
+        if self.conv5_x is not None:
+            x = self.conv5_x(x)
 
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
         x = self.output_layer(x)
 
         return x
-    
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self._forward(x)
 
 '''
 Blocks
@@ -104,7 +110,7 @@ class SimpleBlock(nn.Module):
                 nn.BatchNorm2d(out_channels)
             )
     
-    def _forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
         
         x = self.layer1(x)
@@ -113,7 +119,6 @@ class SimpleBlock(nn.Module):
         
         x = self.layer2(x)
         x = self.bn2(x)
-        x = self.relu(x)
 
         if self.is_plain: return x
 
@@ -125,9 +130,6 @@ class SimpleBlock(nn.Module):
         x = self.relu(x)
         
         return x
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self._forward(x)
 
 class BottleneckBlock(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, is_plain: bool=False):
@@ -166,7 +168,7 @@ class BottleneckBlock(nn.Module):
         self.bn3 = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU()
 
-    def _forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
 
         x = self.conv1(x)
@@ -194,6 +196,3 @@ class BottleneckBlock(nn.Module):
         x = self.relu(x)
 
         return x
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self._forward(x)
