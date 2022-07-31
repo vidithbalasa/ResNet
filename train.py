@@ -17,6 +17,19 @@ def train(model: nn.Module, epochs: int, save_name: str) -> None:
     if save_name:
         with open(f'{save_name}.csv', 'w') as f:
             f.write(f'epoch,train_loss,train_accuracy,test_loss,test_accuracy\n')
+        with open(f'{save_name}_params.csv', 'w') as f:
+            params_to_save = {
+                'learning_rate': Params.LEARNING_RATE,
+                'epochs': epochs,
+                'batch_size': Params.BATCH_SIZE,
+                'device': Params.DEVICE,
+                'num_classes': Params.NUM_CLASSES
+            }
+            # save the dict as a csv
+            ordered_keys = [str(x) for x in params_to_save.keys()]
+            ordered_vals = [str(params_to_save[x]) for x in ordered_keys]
+            f.write(','.join(ordered_keys) + '\n')
+            f.write(','.join(ordered_vals))
     
     last_loss = float('inf')
     for epoch_idx in range(epochs):
