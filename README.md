@@ -19,14 +19,14 @@ GRAPH
 
 ## Implementation Details
 ### Shortcut Connections
-The heart of the ResNet architecture is the residual connections (aka shortcut connections) that combine the feed-forward layer output with the input (identity). This way, deeper layers that would normally detract from the models performance instead have a baseline of not changing it.
+At the heart of ResNet lie residual layers (aka shortcut connections). Weights in deeper layers have a tendency to drift to 0, leading the whole output to 0 which hinders model performance. To fix this, the authors proposed to add the input to the output so that as the weights moved to 0, the final output would move toward the input. This way layers with bad weights would simply not change model performance instead of make it worse.
 $$\sigma=\text{activation function}$$
 $$\text{output from previous layer}=x$$
 $$\text{output from this layer}=\sigma(f(x))$$
 $$\text{output after residual connection}=\sigma(f(x)+x)$$
-If the weights of the layer tend to 0, then f(x) will also tend to 0. Normally this would harm model performance, but by adding the input to the output, it instead trends toward the input, thus not changing the model’s performance.
+If the weights of the layer trend towards 0, then f(x) will also trend towards 0. Normally this would harm model performance, but by adding the input to the output (x), as f(x) trends to 0 the output trends towards x.
 ```python
-def forward(self, input: torch.Tensor):
+def forward(self, input: torch.Tensor) -> torch.Tensor:
 	# assume block_layers is some set of feed-forward layers
 	output = self.block_layers(input)
 	
@@ -35,23 +35,22 @@ def forward(self, input: torch.Tensor):
 	return self.activation(output)
 ```
 #### Special Case - Change in Size
-As the model travels to each set of blocks, the authors double the number of channels to gain more info. At the same time, they add a stride of 2 to reduce the size in half, retaining the same resolution as before. This means there are instances where we need to project the model to the new output. The authors propose 3 methods but chooses to implement method A, so I did the same.
+As the model travels to each set of blocks, the authors double the number of channels to gain more info. At the same time, they add a stride of 2 to reduce the size in half, retaining the same resolution as before. This means there are instances where we need to project the model to the new output. The authors propose 2 viable methods.
+>Method A
+>- Downsample the image using a pool layer with stride of 2 (to match conv layer with stride of 2)
+>- Double the number of channels by adding 0 value channels
+>
+>*avoids using any extra parameters which cuts down on train time*
 ```python
-‘’’
-Method A
-- Downsample the image using a pool layer with stride of 2 (to match conv layer with stride of 2)
-- Double the number of channels by adding 0 value channels
-‘’’
 class Block:
-	def __init__(self, …):
+	def __init__(self, ...):
 		…
 		self.downsample = nn.AvgPool2d(kernel_size=1, stride=2)
 
-def shortcut(self, identity: torch.Tensor):
-		‘’’
-		identity.shape           == ( 16, 32, 32 )
-		projected_identity.shape == ( 32, 16, 16 )
-		‘’’
+	def shortcut_projection(self, identity: torch.Tensor) -> torch.Tensor:
+		# identity.shape           == ( 16, 32, 32 )
+		# projected_identity.shape == ( 32, 16, 16 )
+		
 		# The feed-forward block downsamples the image by increasing stride to 2, so we do the same
 		projected_identity = self.downsample(identity)
 		
@@ -61,6 +60,22 @@ def shortcut(self, identity: torch.Tensor):
 		projected_identity = torch.cat([projected_identity, projected_identity_zero_clone], dim=1)
 		return projected_identity
 		
+```
+>Method B
+>- Run the input through a conv layer that doubles the channels and downsamples with stride=2 in one go
+>
+>*creates more accurate identity projected by not using 0 value channels*
+```python
+class Block:
+	def __init__(self, in_channels, ...):
+		# conv layer that doubles the number of channels and downsamples w stride of 2
+		self.conv_project = nn.Conv2d(in_channels=in_channels, outchannels=in_channels*2, kernel_size=3, stride=2)
+		# batch normalization
+		self.norm = nn.BatchNorm2d(in_channels*2)
+	
+	def shortcut_projection(self, identity: torch.Tensor) -> torch.Tensor:
+		projected_identity = self.conv_project(identity)
+		return self.norm(projected_identity)
 ```
 ### Parameters
 #### Training Time
@@ -72,7 +87,7 @@ I kept all the hyper parameters the same as the authors used in the paper. These
 
 ## Usage
 ### Train Locally
-Open colab_train.ipynb and run every block after the G-Drive setup section.
+Open `colab_train.ipynb` and run every block after the G-Drive setup section.
 
 ### Train on Colab
 Copy any paste code blocks from `colab_train.ipynb` G-Drive setup section into a colab file. Then go into the repo on drive and open `colab_train.ipynb` in colab. You can then run every block and modify it as you wish.
