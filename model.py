@@ -34,7 +34,7 @@ class ResNet(nn.Module):
             - End with a 1000 neuron output layer (with a softmax activation)
         '''
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=out_channels, kernel_size=kernel, stride=stride, padding=pad)
-        self.norm = nn.BatchNorm2d(num_features=out_channels)
+        self.norm = nn.BatchNorm2d(num_features=out_channels, track_running_stats=True)
         self.relu = nn.ReLU()
         self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2, padding=1)
         # BLOCKS
@@ -99,17 +99,29 @@ class SimpleBlock(nn.Module):
         stride = 1 if self.num_channels_is_same else 2
         ''' Architecture '''
         self.layer1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1)
-        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.bn1 = nn.BatchNorm2d(out_channels, track_running_stats=True)
         # layer 1 will spit out `out_channels` so this becomes the input to layer 2
         self.layer2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
-        self.bn2 = nn.BatchNorm2d(out_channels)
+        self.bn2 = nn.BatchNorm2d(out_channels, track_running_stats=True)
         self.relu = nn.ReLU()
         if not self.num_channels_is_same:
             # use a dense layer to project the identity to the output channels
-            self.projection = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=2),
-                nn.BatchNorm2d(out_channels)
-            )
+            self.downsample = nn.AvgPool2d(kernel_size=1, stride=2)
+    
+    # shortcut connection described by option A in the paper
+    def shortcut_connection(self, identity: torch.Tensor) -> torch.Tensor:
+        '''
+        Shortcut connection described by option A in the paper
+            1. downsample identity to match output (because first block downsamples w stride of 2)
+            2. zero pad identity to match output channels (double identity channels)
+        '''
+        identity = self.downsample(identity)
+        # double number of identity channels
+        # first turn identity into a zero valued tensor
+        identity_zero_clone = torch.zeros_like(identity)
+        # then combine identity with the identity zero clone
+        identity = torch.cat([identity, identity_zero_clone], dim=1)
+        return identity
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
@@ -126,7 +138,7 @@ class SimpleBlock(nn.Module):
         ''' Shortcut Connection '''
         if not self.num_channels_is_same:
             # project the input to the output channels
-            identity = self.projection(identity)
+            identity = self.shortcut_connection(identity)
         x += identity
         x = self.relu(x)
         
@@ -162,11 +174,11 @@ class BottleneckBlock(nn.Module):
         1x1 conv - upsample output
         '''
         self.conv1 = nn.Conv2d(in_channels, downsampled_channels, kernel_size=1, stride=stride, padding=0)
-        self.bn1 = nn.BatchNorm2d(downsampled_channels)
+        self.bn1 = nn.BatchNorm2d(downsampled_channels, track_running_stats=True)
         self.conv2 = nn.Conv2d(downsampled_channels, downsampled_channels, kernel_size=3, stride=1, padding=1)
-        self.bn2 = nn.BatchNorm2d(downsampled_channels)
+        self.bn2 = nn.BatchNorm2d(downsampled_channels, track_running_stats=True)
         self.conv3 = nn.Conv2d(downsampled_channels, out_channels, kernel_size=1, stride=1, padding=0)
-        self.bn3 = nn.BatchNorm2d(out_channels)
+        self.bn3 = nn.BatchNorm2d(out_channels, track_running_stats=True)
         self.relu = nn.ReLU()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
