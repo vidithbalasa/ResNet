@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 from torch.utils.data import DataLoader
 from params import Params
 from typing import Optional
@@ -110,9 +111,8 @@ def evaluate_model(model: nn.Module, validloader: DataLoader, loss_fn: nn.module
 
             if include_top_5:
                 # compute top 5 accuracy
-                _, top_5_predicted = torch.topk(outputs.data, 5)
-                top_5_correct += (top_5_predicted == labels).sum().item()
-                
+                _, top_5_pred = torch.topk(outputs.data, 5)
+                top_5_correct += np.array([1 for i in range(top_5_pred.size(0)) if labels[i] in top_5_pred[i]]).sum()
 
             # compute loss
             loss = loss_fn(outputs, labels)
