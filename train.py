@@ -20,7 +20,8 @@ def train(model: nn.Module, epochs: int, save_name: str, top_k: int=0) -> None:
     optimizer = torch.optim.Adam(model.parameters(), lr=Params.LEARNING_RATE)
     if save_name:
         with open(f'{save_name}.csv', 'w') as f:
-            f.write(f'epoch,train_loss,train_accuracy,valid_loss,valid_accuracy,valid_top_5_accuracy\n')
+            cols = 'epoch,train_loss,train_accuracy,valid_loss,valid_accuracy'
+            f.write(cols + ',valid_top_k_accuracy' if top_k > 0 else cols)
         save_model_train_params(f'{save_name}_params.csv', epochs=epochs)
     
     last_loss = float('inf')
@@ -32,8 +33,9 @@ def train(model: nn.Module, epochs: int, save_name: str, top_k: int=0) -> None:
         print(f'\tTrain Loss: {train_loss:.2f} - Train Accuracy: {train_accuracy:.2f}%, \
             Test Loss: {test_loss:.2f} - Test Accuracy: {test_accuracy*100:.2f}%')
         if save_name:
+            row = f'\n{epoch_idx},{train_loss:.2f},{train_accuracy*100:.2f}%,{test_loss:.2f},{test_accuracy*100:.2f}%'
             with open(f'{save_name}.csv', 'a') as f:
-                f.write(f'{epoch_idx},{train_loss:.2f},{train_accuracy*100:.2f}%,{test_loss:.2f},{test_accuracy*100:.2f}%,{test_top_k_acc*100:.2f}%\n')
+                f.write(row + f',{test_top_k_acc:.2f}%' if top_k > 0 else row)
         # save 
         if test_loss < last_loss:
             torch.save(model.state_dict(), f'{save_name}.pt')
