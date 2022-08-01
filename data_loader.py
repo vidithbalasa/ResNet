@@ -9,14 +9,20 @@ def get_CIFAR_data() -> DataLoader and DataLoader and tuple:
     Get the data. 
     Dataset: CIFAR10
     '''
-    transformation = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    train_transformation = transforms.Compose([
+        transforms.Pad(4),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomCrop(32),
+        transforms.ToTensor()
+    ])
+
+    test_transormation = transforms.Compose([
+        transforms.ToTensor()
     ])
 
     trainset = torchvision.datasets.CIFAR10(
         root='./data', train=True, 
-        download=True, transform=transformation
+        download=True, transform=train_transformation
     )
 
     trainloader = DataLoader(
@@ -26,7 +32,7 @@ def get_CIFAR_data() -> DataLoader and DataLoader and tuple:
 
     testset = torchvision.datasets.CIFAR10(
         root='./data', train=False,
-        download=True, transform=transformation
+        download=True, transform=train_transformation
     )
     testloader = DataLoader(
         testset, batch_size=Params.BATCH_SIZE,
