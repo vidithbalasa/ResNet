@@ -44,7 +44,8 @@ class ResNet(nn.Module):
         self.conv5_x = self._make_layer(block, num_blocks[3], channels[3][0], channels[3][1]) if num_blocks[3] else None
         # OUTPUT
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.output_layer = nn.Linear(in_features=channels[-1][-1], out_features=num_classes)
+        self.output_layer = nn.Linear(in_features=channels[-1][-1], out_features=num_classes, bias=True)
+        self.softmax = nn.LogSoftmax(dim=-1)
     
     def _make_layer(self, block, num_blocks, in_channels, out_channels) -> Optional[nn.Sequential]:
         if num_blocks == 0: 
@@ -72,6 +73,7 @@ class ResNet(nn.Module):
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
         x = self.output_layer(x)
+        x = self.softmax(x)
 
         return x
 
