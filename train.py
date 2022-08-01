@@ -29,7 +29,7 @@ def train(model: nn.Module, epochs: int, save_name: str, top_k: int=0) -> None:
         model.train(True)
         train_loss, train_accuracy = train_one_epoch(model, trainloader, optimizer, loss_fn, epoch_idx)
         model.eval()
-        test_loss, test_accuracy, test_top_k_acc = evaluate_model(model, testloader, loss_fn, top_k)
+        test_loss, test_accuracy, *test_top_k_acc = evaluate_model(model, testloader, loss_fn, top_k)
         print(f'\tTrain Loss: {train_loss:.2f} - Train Accuracy: {train_accuracy:.2f}%, \
             Test Loss: {test_loss:.2f} - Test Accuracy: {test_accuracy*100:.2f}%')
         if save_name:
