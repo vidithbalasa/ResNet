@@ -4,11 +4,16 @@ Paper   || [Deep Residual Learning for Image Recognition](https://arxiv.org/abs/
 Authors || Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
 ```
 
-An implementation of the original ResNet architecture as outlined in the 2015 paper, Deep Residual Learning for Image Recognition. This pytorch implementation achieves 92.13% test accuracy for resnet20 and 93.52% test accuracy for resnet50 on the CIFAR-10 dataset—within 3% of the author's reported results.
+An implementation of the original ResNet architecture as outlined in the 2015 paper, Deep Residual Learning for Image Recognition. This pytorch implementation achieves 92.00% test accuracy for resnet20 and 92.96% test accuracy for resnet50 on the CIFAR-10 dataset—within 1% of the author's reported results.
 
 >This implementation is intended to be as clear and concise as possible, and is therefore not optimized for performance.
 
-GRAPH
+| Architecture | Test Error (Paper) | Test Error (Me)  |
+| --- | --- | --- |
+| ResNet20 | 8.75 % | 8.00 % |
+| ResNet32 | 7.51 % | 7.43 % |
+| ResNet44 | 7.17 % | 7.19 % |
+| ResNet56 | 6.97 % | 7.04 % |
 
 ## Index
 - [Implementation Details](https://github.com/vidithbalasa/ResNet/edit/main/README.md#implementation-details)
