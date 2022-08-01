@@ -16,11 +16,11 @@ An implementation of the original ResNet architecture as outlined in the 2015 pa
 | ResNet56 | 6.97 % | 7.04 % |
 
 ## Index
-- [Implementation Details](https://github.com/vidithbalasa/ResNet/edit/main/README.md#implementation-details)
-    - [Shortcut Connections](https://github.com/vidithbalasa/ResNet/edit/main/README.md#shortcut-connections)
-    - [Parameters](https://github.com/vidithbalasa/ResNet/edit/main/README.md#parameters)
-- [Usage](https://github.com/vidithbalasa/ResNet/edit/main/README.md#usage)
-- [Works Cited](https://github.com/vidithbalasa/ResNet/edit/main/README.md#works-cited)
+- [Implementation Details](https://github.com/vidithbalasa/ResNet/README.md#implementation-details)
+    - [Shortcut Connections](https://github.com/vidithbalasa/ResNet//README.md#shortcut-connections)
+    - [Parameters](https://github.com/vidithbalasa/ResNet/README.md#parameters)
+- [Usage](https://github.com/vidithbalasa/ResNet/README.md#usage)
+- [Works Cited](https://github.com/vidithbalasa/ResNet#works-cited)
 
 ## Implementation Details
 ### Shortcut Connections
