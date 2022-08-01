@@ -13,11 +13,14 @@ def get_CIFAR_data() -> DataLoader and DataLoader and tuple:
         transforms.Pad(4),
         transforms.RandomHorizontalFlip(),
         transforms.RandomCrop(32),
-        transforms.ToTensor()
+        transforms.ToTensor(),
+        # based on given mean and std of the dataset
+        transforms.Normalize((0.5, 0.5, 0.5), (0.25, 0.25, 0.25))
     ])
 
     test_transormation = transforms.Compose([
-        transforms.ToTensor()
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.25, 0.25, 0.25))
     ])
 
     trainset = torchvision.datasets.CIFAR10(

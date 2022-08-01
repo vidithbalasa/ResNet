@@ -8,7 +8,7 @@ from tqdm import tqdm
 from datetime import datetime
 from data_loader import get_CIFAR_data
 
-def train(model: nn.Module, epochs: int, save_name: str, top_k: int=0) -> None:
+def train(model: nn.Module, save_name: str, top_k: int=0) -> None:
     '''
     Train the model.
         @param model: the model to train
@@ -17,15 +17,15 @@ def train(model: nn.Module, epochs: int, save_name: str, top_k: int=0) -> None:
     '''
     trainloader, testloader, _ = get_CIFAR_data()
     loss_fn = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=Params.LEARNING_RATE)
+    optimizer = torch.optim.SGD(model.parameters(), lr=Params.LEARNING_RATE, momentum=Params.MOMENTUM, weight_decay=Params.WEIGHT_DECAY)
     if save_name:
         with open(f'{save_name}.csv', 'w') as f:
             cols = 'epoch,train_loss,train_accuracy,valid_loss,valid_accuracy'
             f.write(cols + ',valid_top_k_accuracy' if top_k > 0 else cols)
-        save_model_train_params(f'{save_name}_params.csv', epochs=epochs)
+        Params.save_params_to_csv(f'{save_name}_params.csv')
     
     last_loss = float('inf')
-    for epoch_idx in range(epochs):
+    for epoch_idx in range(Params.EPOCHS):
         model.train(True)
         train_loss, train_accuracy = train_one_epoch(model, trainloader, optimizer, loss_fn, epoch_idx)
         model.eval()
@@ -113,18 +113,3 @@ def evaluate_model(model: nn.Module, validloader: DataLoader, loss_fn: nn.module
     if top_k:
         return valid_loss, valid_accuracy, valid_top_k_acc
     return valid_loss, valid_accuracy
-
-def save_model_train_params(save_file: str, epochs: int) -> None:
-    params_to_save = {
-        'learning_rate': Params.LEARNING_RATE,
-        'epochs': epochs,
-        'batch_size': Params.BATCH_SIZE,
-        'device': Params.DEVICE,
-        'num_classes': Params.NUM_CLASSES
-    }
-    # save the dict as a csv
-    ordered_keys = [str(x) for x in params_to_save.keys()]
-    ordered_vals = [str(params_to_save[x]) for x in ordered_keys]
-    with open(save_file, 'w') as f:
-        f.write(','.join(ordered_keys) + '\n')
-        f.write(','.join(ordered_vals))
