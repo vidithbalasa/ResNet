@@ -31,12 +31,12 @@ $$\text{output from this layer}=\sigma(f(x))$$
 $$\text{output after residual connection}=\sigma(f(x)+x)$$
 If the weights of the layer trend towards 0, then f(x) will also trend towards 0. Normally this would harm model performance, but by adding the input to the output (x), as f(x) trends to 0 the output trends towards x.
 ```python
-def forward(self, input: torch.Tensor) -> torch.Tensor:
+def forward(self, input_: torch.Tensor) -> torch.Tensor:
 	# assume block_layers is some set of feed-forward layers
-	output = self.block_layers(input)
+	output = self.block_layers(input_)
 	
 	# shortcut connection
-	output += input
+	output += input_
 	return self.activation(output)
 ```
 #### Special Case - Change in Size
