@@ -49,7 +49,7 @@ class Block:
 
 def shortcut(self, identity: torch.Tensor):
 		‘’’
-		identity.shape                   == ( 16, 32, 32 )
+		identity.shape           == ( 16, 32, 32 )
 		projected_identity.shape == ( 32, 16, 16 )
 		‘’’
 		# The feed-forward block downsamples the image by increasing stride to 2, so we do the same
