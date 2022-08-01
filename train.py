@@ -34,10 +34,10 @@ def train(
     32k_iterations_in_epochs = ceil(32k / iterations_per_epoch)
     48k_iterations_in_epochs = ceil(48k / iterations_per_epoch)
     '''
+    epoch_iters = len(trainloader)
+    milestones = [math.ceil(x / epoch_iters) for x in [32_000, 48_000]]
+    gamma = 0.1 # drop lr by 10% after each milestone
     if scheduler is None:
-        epoch_iters = len(trainloader)
-        milestones = [math.ceil(x / epoch_iters) for x in [32_000, 48_000]]
-        gamma = 0.1 # drop lr by 10% after each milestone
         scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones, gamma=gamma)
 
     if save_name:

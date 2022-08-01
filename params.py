@@ -24,3 +24,12 @@ class Params:
             writer = csv.DictWriter(f, fieldnames=class_var_dict.keys())
             writer.writeheader()
             writer.writerow(class_var_dict)
+
+    @classmethod
+    def print(cls) -> str:
+        class_vars = vars(cls)
+        print('Params:')
+        for var_name, val in class_vars.items():
+            if not var_name.startswith('__') and var_name.isupper():
+                print(f'- {var_name}: {val}')
+
