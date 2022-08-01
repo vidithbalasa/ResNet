@@ -10,13 +10,16 @@ from data_loader import get_CIFAR_data
 def train(model: nn.Module, epochs: int, save_name: str) -> None:
     '''
     Train the model.
+        @param model: the model to train
+        @param epochs: the number of epochs to train for
+        @param save_name: where to save the model - full path and filename without extension (e.g. '.csv')
     '''
     trainloader, testloader, classes = get_CIFAR_data()
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=Params.LEARNING_RATE)
     if save_name:
         with open(f'{save_name}.csv', 'w') as f:
-            f.write(f'epoch,train_loss,train_accuracy,test_loss,test_accuracy\n')
+            f.write(f'epoch,train_loss,train_accuracy,test_loss,test_accuracy,test_top_5_accuracy\n')
         with open(f'{save_name}_params.csv', 'w') as f:
             params_to_save = {
                 'learning_rate': Params.LEARNING_RATE,
@@ -36,12 +39,12 @@ def train(model: nn.Module, epochs: int, save_name: str) -> None:
         model.train(True)
         train_loss, train_accuracy = train_one_epoch(model, trainloader, optimizer, loss_fn, epoch_idx)
         model.eval()
-        test_loss, test_accuracy = evaluate_model(model, testloader, loss_fn)
+        test_loss, test_accuracy, test_top_5_acc = evaluate_model(model, testloader, loss_fn, include_top_5=True)
         print(f'\tTrain Loss: {train_loss:.2f} - Train Accuracy: {train_accuracy:.2f}%, \
-            Test Loss: {test_loss:.2f} - Test Accuracy: {test_accuracy*100:.2f}%')
+            Test Loss: {test_loss:.2f} - Test Accuracy: {test_accuracy*100:.2f}% - Test Top 5 Accuracy: {test_top_5_acc*100:.2f}%')
         if save_name:
             with open(f'{save_name}.csv', 'a') as f:
-                f.write(f'{epoch_idx},{train_loss:.2f},{train_accuracy:.2f}%,{test_loss:.2f},{test_accuracy*100:.2f}%\n')
+                f.write(f'{epoch_idx},{train_loss:.2f},{train_accuracy:.2f}%,{test_loss:.2f},{test_accuracy*100:.2f}%,{test_top_5_acc*100:.2f}%\n')
         # save 
         if train_loss < last_loss:
             torch.save(model.state_dict(), f'{save_name}.pt')
@@ -65,6 +68,7 @@ def train_one_epoch(
         '''
         running_loss = 0
         correct = 0
+        total = 0
 
         # tqdm loader with title 'epoch {epoch_idx}'
         for batch_idx, (images, labels) in tqdm(enumerate(trainloader), desc=f'Epoch {epoch_idx}'):
@@ -75,6 +79,7 @@ def train_one_epoch(
             outputs = model(images)
             # check if the model is correct
             _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
             correct += (predicted == labels).sum().item()
             # compute loss & gradients
             loss = loss_fn(outputs, labels)
@@ -83,13 +88,14 @@ def train_one_epoch(
             optimizer.step()
 
             running_loss += loss.item()
-        return running_loss / len(trainloader), correct / len(trainloader)
+        return running_loss / len(trainloader), correct / total
 
-def evaluate_model(model: nn.Module, validloader: DataLoader, loss_fn: nn.modules.loss) -> float:
+def evaluate_model(model: nn.Module, validloader: DataLoader, loss_fn: nn.modules.loss, include_top_5: bool=False) -> float:
     '''
     Compute the accuracy and loss of the model on the validation set.
     '''
     correct = 0
+    top_5_correct = 0
     total = 0
     running_loss = 0
     with torch.no_grad():
@@ -102,7 +108,18 @@ def evaluate_model(model: nn.Module, validloader: DataLoader, loss_fn: nn.module
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
+            if include_top_5:
+                # compute top 5 accuracy
+                _, top_5_predicted = torch.topk(outputs.data, 5)
+                top_5_correct += (top_5_predicted == labels).sum().item()
+                
+
             # compute loss
             loss = loss_fn(outputs, labels)
             running_loss += loss.item()
-    return running_loss / len(validloader), correct / total
+    valid_loss = running_loss / len(validloader)
+    valid_accuracy = correct / total
+    valid_top_5_accuracy = top_5_correct / total
+    if include_top_5:
+        return valid_loss, valid_accuracy, valid_top_5_accuracy
+    return valid_loss, valid_accuracy
