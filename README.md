@@ -34,7 +34,7 @@ def forward(self, input: torch.Tensor):
 	output += input
 	return self.activation(output)
 ```
-**Special Case - Change in Size**
+#### Special Case - Change in Size
 As the model travels to each set of blocks, the authors double the number of channels to gain more info. At the same time, they add a stride of 2 to reduce the size in half, retaining the same resolution as before. This means there are instances where we need to project the model to the new output. The authors propose 3 methods but chooses to implement method A, so I did the same.
 ```python
 ‘’’
@@ -63,11 +63,11 @@ def shortcut(self, identity: torch.Tensor):
 		
 ```
 ### Parameters
-**Training Time**
+#### Training Time
 Authors trained their model for 64k iterations. To match that in epochs, num_epochs should be ceil(64k / ceil(num_data / batch_size)). With a batch size of 128, this works out to 164 epochs.
-**Batch Normalization**
+#### Batch Normalization
 In order to match results of the paper, batch normalization with running mean and standard deviation estimates are necessary. This can be accomplished with `nn.BatchNorm2d(…, track_running_stats=True)`
-**Hyper Parameters**
+#### Hyper Parameters
 I kept all the hyper parameters the same as the authors used in the paper. These can be found in `params.py`.
 
 ## Usage
