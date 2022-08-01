@@ -1,14 +1,20 @@
+import math
 import torch
 import torch.nn as nn
 import numpy as np
 from torch.utils.data import DataLoader
-from params import Params
 from typing import Optional
 from tqdm import tqdm
-from datetime import datetime
+from params import Params
 from data_loader import get_CIFAR_data
 
-def train(model: nn.Module, save_name: str, top_k: int=0) -> None:
+def train(
+    model: nn.Module,
+    save_name: str, 
+    top_k: int=0, 
+    optimizer: torch.optim=None, 
+    scheduler: torch.optim.lr_scheduler=None
+) -> None:
     '''
     Train the model.
         @param model: the model to train
@@ -17,7 +23,23 @@ def train(model: nn.Module, save_name: str, top_k: int=0) -> None:
     '''
     trainloader, testloader, _ = get_CIFAR_data()
     loss_fn = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=Params.LEARNING_RATE, momentum=Params.MOMENTUM, weight_decay=Params.WEIGHT_DECAY)
+    if optimizer is None:
+        optimizer = torch.optim.SGD(model.parameters(), lr=Params.LEARNING_RATE, momentum=Params.MOMENTUM, weight_decay=Params.WEIGHT_DECAY)
+    '''
+    Learning Rate Scheduler
+    The authors run the model over 64k iterations. They use a scheduler to drop the learning rate
+    by 10% after 32k iterations and 48k iterations (page 7).
+
+    So how many epochs is that?
+    32k_iterations_in_epochs = ceil(32k / iterations_per_epoch)
+    48k_iterations_in_epochs = ceil(48k / iterations_per_epoch)
+    '''
+    epoch_iters = len(trainloader)
+    milestones = [math.ceil(x / epoch_iters) for x in [32_000, 48_000]]
+    gamma = 0.1 # drop lr by 10% after each milestone
+    if scheduler is None:
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones, gamma=gamma)
+
     if save_name:
         with open(f'{save_name}.csv', 'w') as f:
             cols = 'epoch,train_loss,train_accuracy,valid_loss,valid_accuracy'
@@ -28,6 +50,8 @@ def train(model: nn.Module, save_name: str, top_k: int=0) -> None:
     for epoch_idx in range(Params.EPOCHS):
         model.train(True)
         train_loss, train_accuracy = train_one_epoch(model, trainloader, optimizer, loss_fn, epoch_idx)
+        if scheduler:
+            scheduler.step()
         model.eval()
         test_loss, test_accuracy, *test_top_k_acc = evaluate_model(model, testloader, loss_fn, top_k)
         print(f'\tTrain Loss: {train_loss:.2f} - Train Accuracy: {train_accuracy*100:.2f}%, \

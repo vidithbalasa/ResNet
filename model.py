@@ -6,10 +6,11 @@ from typing import List, Optional
 class ResNet(nn.Module):
     def __init__(self, block: nn.Module, num_blocks: List[int], num_classes: int=Params.NUM_CLASSES, is_plain: bool=False):
         '''
-        @param block: the block to use in the ResNet
-        @param num_blocks: a list of the number of blocks in each layer
-        @param num_classes: the number of classes in the dataset
-        @param is_plain: doesn't use residual connections if True
+        A convolutional neural network with residual connections.
+            @param block: the block to use in the ResNet
+            @param num_blocks: a list of the number of blocks in each layer
+            @param num_classes: the number of classes in the dataset
+            @param is_plain: doesn't use residual connections if True
         '''
         super(ResNet, self).__init__()
         self.is_plain = is_plain
