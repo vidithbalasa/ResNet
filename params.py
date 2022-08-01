@@ -4,7 +4,7 @@ class Params:
     '''
     A place to store all the parameters for the model
     '''
-    BATCH_SIZE = 64
+    BATCH_SIZE = 128
     NUM_CLASSES = 10
     DEVICE = 'cuda'
     LEARNING_RATE = 0.1
