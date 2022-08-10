@@ -46,6 +46,10 @@ class ResNet(nn.Module):
         # OUTPUT
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.output_layer = nn.Linear(in_features=channels[-1][-1], out_features=num_classes, bias=True)
+        # add He initialization to output layer
+        nn.init.kaiming_normal_(self.output_layer.weight)
+        # zero out bias
+        self.output_layer.bias.data.zero_()
         self.softmax = nn.LogSoftmax(dim=-1)
     
     def _make_layer(self, block, num_blocks, in_channels, out_channels) -> Optional[nn.Sequential]:
